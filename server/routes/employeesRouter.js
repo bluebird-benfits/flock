@@ -1,98 +1,108 @@
 // Module: Employees Router
 import express from 'express'
 import { addEmployees, editEmployees, findEmployees} from '../controllers/employeesController.js'
-import { MongoExpiredSessionError } from 'mongodb'
+import { responseObject } from '../utilities/http/response.js'
 
 const router = express.Router()
 
-let body = {}
-let status = process.env.API_STATUS_PROCESSING
-let statusCode = 0
-let processStart = Date.now()
-let processEnd = ''
-let processDuration = 0
-let functionInvoked = ''
-let results
-
 router.get(`/`, async (req, res) => {
-
-    processStart = Date.now()
-    status = process.env.API_STATUS_PROCESSING
-
+    var data
+    var status = 'processing'
+    var recordCount = 0
+    var httpResponseCode
     try {
-        results = await findEmployees( req.query )
-        body = results
-        status = process.env.API_STATUS_SUCCESS
-        statusCode = 200
+        let request = {
+            criteria: req.query
+        }
+        const results = await findEmployees( request )
+        data = results.data
+        recordCount = results.recordCount
+        status = 'success'
+        httpResponseCode = 200
     } catch ( e ) {
-        error = {
+        const error = {
             name: e.name,
             message: e.message,
             stack: e.stack
         }
-        body = error
-        status = process.env.API_STATUS_ERROR
-        statusCode = 400
+        data = error
+        status = 'error'
+        httpResponseCode = 400
     }
-
-    functionInvoked = 'employeesRouter.get()'
-    processEnd = Date.now()
-    processDuration = ( processEnd - processStart ) / 1000
-
-    let response = {
-        functionInvoked: functionInvoked,
+    const response = {
         status: status,
-        statusCode: statusCode,
-        processStart: processStart,
-        processEnd: processEnd,
-        processDuration: processDuration,
-        body: body
+        recordCount: recordCount,
+        data: data
     }
-    return res.status( statusCode ).send( response )
-
+    
+    return res.status( httpResponseCode ).send( response )
 })
 
 router.post(`/`, async (req, res) => {
-    console.log('router')
-    let employees = await addEmployees( req.body )
-    res.send( employees )
-})
-
-router.put(`/`, async (req, res) => {
-
-    processStart = Date.now()
-    status = process.env.API_STATUS_PROCESSING
-
+    let data
+    let status = 'processing'
+    let httpResponseCode
+    let recordCount = 0
     try {
-        results = await editEmployees( req.body )
-        body = results
-        status = process.env.API_STATUS_SUCCESS
-        statusCode = 200
+        let results = await addEmployees( req.body )
+        if ( results.status === 'error' ) {
+            status = 'error'
+            httpResponseCode = 400
+        } else {
+            status = 'success'
+            httpResponseCode = 200
+            recordCount = results.recordCount
+        }
+        data = results.data
     } catch ( e ) {
-        error = {
+        const error = {
             name: e.name,
             message: e.message,
             stack: e.stack
         }
-        body = error
-        status = process.env.API_STATUS_ERROR
-        statusCode = 400
+        data = error,
+        status = 'error',
+        httpResponseCode = 400
     }
-
-    functionInvoked = 'employeesRouter.put()'
-    processEnd = Date.now()
-    processDuration = ( processEnd - processStart ) / 1000
-
-    let response = {
-        functionInvoked: functionInvoked,
+    const response = {
         status: status,
-        statusCode: statusCode,
-        processStart: processStart,
-        processEnd: processEnd,
-        processDuration: processDuration,
-        body: body
+        recordCount: recordCount,
+        data: data
     }
-    return res.status( statusCode ).send( response )
+    res.status( httpResponseCode ).send( response )
+})
+
+router.put(`/`, async (req, res) => {
+    let data
+    let status = 'processing'
+    let httpResponseCode
+    let recordCount = 0
+    try {
+        let results = await editEmployees( req.body )
+        if ( results.status === 'error' ) {
+            status = 'error'
+            httpResponseCode = 400
+        } else {
+            status = 'success'
+            httpResponseCode = 200
+        }
+        data = results.data
+    } catch ( e ) {
+        const error = {
+            name: e.name,
+            message: e.message,
+            stack: e.stack
+        }
+        data = error
+        status = 'error'
+        httpResponseCode = 400
+    }
+    const response = {
+        status: status,
+        recordCount: recordCount,
+        data: data
+    }
+    res.status( httpResponseCode ).send ( response )
 })
 
 export default router

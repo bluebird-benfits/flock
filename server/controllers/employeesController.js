@@ -2,32 +2,9 @@
  * Module: Employees Controller
  * @description This module is the controller handling all requests related to employee records
  */
-import { insert, update, find } from '../models/employeeModel.js'
+// import { insert, update, find } from '../models/employeeModel.js'
 import { sendHttpRequest } from '../utilities/http/http.js'
-
-let body
-let error
-let status
-let statusCode
-let processStart
-let processEnd
-let processDuration
-let functionInvoked
-let results
-
-/**
- * TO-DO:
- *   - Add database connection timeout error handling/retry logic
- *   - Refactor logging to use an EventEmitter
- *     - Endpoint hit
- *     - Function invoked
- *     - Errors
- *     - Response
- *     - Http requests
- *     - Database Connections
- *   - Refactor the custom Response object to reflect parent/children processes
- *   - Add API authentication flow for inbound requests from the client
- */
+import { insert, update, find } from '../utilities/mongodb/wrapper.js'
 /**
  * 
  * @description This is the main function orchestrating the data import of employee profiles
@@ -99,10 +76,8 @@ async function cleanEmployeeDirectory( employees ) {
  * @returns { object }
  */
 export async function getEmployeeDetails( directory ) {
-
     let employees = {}
     let profileList = []
-
     try {
         let employeeList = directory.employees
         let formatedEmployeeList = []  // need to format the list to conform to the request body requirements
@@ -110,7 +85,6 @@ export async function getEmployeeDetails( directory ) {
         await employeeList.forEach( ( employee ) => { 
             formatedEmployeeList.push( { individual_id: employee.id } )
         })
-        console.log(formatedEmployeeList)
         requestBody.requests = formatedEmployeeList
         let httpRequestInputs = {
             method: 'post',
@@ -148,138 +122,122 @@ export async function getEmployeeDetails( directory ) {
  */
 /**
  * @name addEmployees
- * @param {*} employees 
- * @returns object containing the ids of the inserted records
+ * @description Controller function that orchestrates bulk inserting of new employee records to MongoDb
+ * @param { object } employees An object containing an array of employee objects to update in MongoDb
+ * @returns { object } A canonical response object with an array of inserted ids in the Response <body>
  */
-export async function addEmployees( employees ) {
-
-    processStart = Date.now()
-    status = process.env.API_STATUS_PROCESSING
-    
+export async function addEmployees( request ) {
+    let data
+    let status = 'processing'
+    let recordCount = 0
     try {
-        let validation = await validateEmployees( employees )
+        // validate the employee records passed via the employees parameter
+        let validation = await validateEmployees( request.requests )
         if ( validation.status === 'error' ) {
-            error = {
+            const error = {
                 name: 'Employee validation error',
-                message: 'There was an error adding employees',
-                stack: validation.errors
+                message: 'Employee validation failed.',
+                stack: validation.body
             }
+            data = error
+            status = 'error'
         }
     } catch ( e ) {
-        error = {
+        const error = {
             name: e.name,
             message: e.message,
             stack: e.stack
         }
-        body = error
-        status = process.env.API_STATUS_ERROR
-        statusCode = 400
+        data = error
+        status = 'error'
     }
-
-    if ( status != process.env.API_STATUS_ERROR ) {
+    if ( status != 'error' ) {
         try {
-            results = await insert( employees )
-            body = results
-            status = process.env.API_STATUS_SUCCESS
-            statusCode = 200
+            const params = {
+                collection: 'employees',
+                requests: request.requests
+            }
+            const results = await insert( params )
+            if ( results.status === 'error' ) {
+                status = 'error'
+                httpResponseCode = 400
+            } else {
+                status = 'success'
+            }
+            data = results.data
+            recordCount = results.recordCount
         } catch ( e ) {
-            error = {
+            const error = {
                 name: e.name,
                 message: e.message,
                 stack: e.stack
             }
-            body = error
-            status = process.env.API_STATUS_ERROR
-            statusCode = 400
+            data = error
+            status = 'error'
         }
     }
-    functionInvoked = 'employeesController.addEmployees()'
-    processEnd = Date.now()
-    processDuration = ( processEnd - processStart ) / 1000
-
-    let response = {
-        functionInvoked: functionInvoked,
+    const response = {
         status: status,
-        statusCode: statusCode,
-        processStart: processStart,
-        processEnd: processEnd,
-        processDuration: processDuration,
-        body: body
+        recordCount: recordCount,
+        data: data
     }
     return response
 } 
 
 /**
  * @name editEmployees
+ * @description Controller function that orchestrates bulk editing of employee records to MongoDb
  * @param { object } employees An object containing an array of employee objects to write to MongoDb
- * @return { object } 
+ * @return { object } A canonical response object with an array of edited ids in the Response <body>
  */
-export async function editEmployees( employees ) {
-
-    processStart = Date.now()
-    status = process.env.API_STATUS_PROCESSING
-
-    let filter = {}
-    let resultsList = []
-    let result = {}
-    
+export async function editEmployees( request ) {
+    var data
+    var status = 'processing'
+    var recordCount = 0
+    var updated = []
+    var fallout = []
     try {
-        let validation = validateUsers( employees )
+        const validation = await validateEmployees( request.requests )
         if ( validation.status === 'error' ) {
-            error = {
+            const error = {
                 name: 'Employee validation error',
-                message: 'Employee validation failed.  See body for details.',
-                stack: validation.body
+                message: 'Employee validation failed.',
+                stack: validation.data
             }
-            body = error
-            status = process.env.API_STATUS_ERROR
-            statusCode = 400
+            data = error
+            status = 'error'
+        } else {
+            request.requests.forEach( async ( object ) => {
+                let filter = { _id : object._id }
+                let params = {
+                    collection: 'employees',
+                    object: object,
+                    filter: filter
+                }
+                const result = await update( params )
+                if ( result.body.matchedCount === 0 ) {
+                    fallout.push( object._id )
+                } else {
+                    updated.push( object._id )
+                    recordCount += 1
+                }
+            })
+            data = updated
+            status = 'success'
         }
     }  catch ( e ) {
-        error = {
+        const error = {
             name: e.name,
             message: e.message,
             stack: e.stack
         }
-        body = error
-        status = process.env.API_STATUS_ERROR
-        statusCode = 400
+        data = error
+        status = 'error'
     }
-
-    try {
-        employees.requests.forEach( async ( employee ) => {
-            filter = { __id : employee.__id }
-            result = await update( filter, employee )
-            resultsList.push( result )
-            console.log(resultsList)
-        })
-        body = { results: resultsList }
-        console.log(body)
-        status = process.env.API_STATUS_SUCCESS
-        statusCode = 200
-    } catch ( e ) {
-        error = {
-            name: e.name,
-            message: e.message,
-            stack: e.stack
-        }
-        body = error
-        status = process.env.API_STATUS_ERROR
-        statusCode = 400
-    }
-
-    functionInvoked = 'employeesController.editEmployees()'
-    processEnd = Date.now()
-    processDuration = ( processEnd - processStart ) / 1000
-
-    let response = {
-        functionInvoked: functionInvoked,
+    var response = {
         status: status,
-        statusCode: statusCode,
-        processStart: processStart,
-        processEnd: processEnd,
-        processDuration: processDuration,
-        body: body
+        recordCount: recordCount,
+        data: data
     }
     return response
 }
@@ -289,72 +247,66 @@ export async function editEmployees( employees ) {
  * @param { object } criteria 
  * @returns 
  */
-export async function findEmployees( criteria ) {
-
-    processStart = Date.now()
-    status = process.env.API_STATUS_PROCESSING
-
+export async function findEmployees( request ) {
+    var data
+    var status = 'processing'
+    var recordCount = 0
     try {
-        let results = await find( criteria )
-        body = results
-        status = process.env.API_STATUS_SUCCESS
-        statusCode = 200
+        const params = {
+            collection: 'employees',
+            criteria: request.criteria,
+            options: {}
+        }
+        const results = await find( params )
+        if ( results.status === 'error' ) {
+            status = 'error'
+            data = results.data
+        } else {
+            status = 'success'
+            data = results.data
+            recordCount = data.length
+        }
     } catch ( e ) {
-        error = {
+        const error = {
             name: e.name,
             message: e.message,
             stack: e.stack
         }
-        body = error
-        status = process.env.API_STATUS_ERROR
-        statusCode = 400
+        data = error
+        status = 'error'
     }
-
-    functionInvoked = 'employeesController.findEmployees()'
-    processEnd = Date.now()
-    processDuration = ( processEnd - processStart ) / 1000
-
-    let response = {
-        functionInvoked: functionInvoked,
+    var response = {
         status: status,
-        statusCode: statusCode,
-        processStart: processStart,
-        processEnd: processEnd,
-        processDuration: processDuration,
-        body: body
+        recordCount: recordCount,
+        data: data
     }
     return response
 } 
+
 /**
- * @name deleteEmployees
- * @param { object } employees 
+ * @name validateEmployees
+ * @description
+ * @param { array } employees An array of employee objects
  * @returns 
  */
-export function deleteEmployees( employees ) {
-    let deletedEmployees = {}
-    return deleteEmployees
-}
-
-async function validateEmployees( employees ){
+async function validateEmployees( employees ) {
+    let data
+    let error
+    let errors = []
+    let status = 'processing'
     try {
-        let response = {
-            status: ''
-        }
-        // Confirm the input parameter is an array with at least one element
         if ( ! Array.isArray( employees )) {
-            return {
-                status: 'error',
+            return error = {
+                name: 'Employee validation error',
                 message: 'The function must be passed an array of employee objects.'
             }
         }
         if ( employees.length < 1 ) {
-            return {
-                status: 'error',
+            return error = {
+                name: 'Employee validation error',
                 message: 'The input array must have at least one element.'
             }
         }
-        // Validate each employee in the array
-        let errors = []
         employees.forEach( ( employee ) => {
             if ( ! employee.hasOwnProperty( 'finchId' )) {
                 errors.push('The request must provide a Finch Id property')
@@ -363,25 +315,53 @@ async function validateEmployees( employees ){
                 errors.push('The request must provide a first name property.')
             } else {
                 if ( employee.firstName.length < 2 ) {
-                    errors.push('The company name property must have at least 3 characters')
+                    errors.push('The First Name property must have at least 2 characters')
                 }
-                if ( employee.firstName.length > 20 ) {
-                    errors.push('The company name property must have fewer than 75 characters')
+                if ( employee.firstName.length > 35 ) {
+                    errors.push('The First Name property must have fewer than 35 characters')
                 }
             }
-            if ( ! employee.hasOwnProperty(' lastName ')) {
-                errors.push('The request must provide a last name property')
+            if ( ! employee.hasOwnProperty( 'lastName' )) {
+                errors.push( 'The request must contain a Last Name property' )
+            } else {
+                if ( employee.lastName.length < 2 ) {
+                    errors.push( 'The Last Name must have 2 or more characters ')
+                }
+                if ( employee.lastName.length > 35 ) {
+                    errors.push( 'The Last Name must have fewer than 35 characters.' )
+                }
             }
+            if ( ! employee.hasOwnProperty( 'employerId') ) {
+                errors.push( 'The request must contain an EmployerId property' )
+            }
+            if ( ! employee.hasOwnProperty( 'email') ) {
+                errors.push( 'The request must contain an Email property' )
+            }
+
             if ( errors.length > 0 ) {  // return after the first employee that fails validation
-                response =  {
-                    status: 'error',
+                error =  {
+                    name: 'Employee validation error',
                     errors: errors,
                     offender: employee
                 }
-            } 
-        })
-        return response
-    } catch ( error ) {
-        return error
+                return response = {
+                    status: 'error',
+                    data: error
+                }
+            }
+        }) // end foreach
+    } catch ( e ) {
+        const error = {
+            name: e.name,
+            message: e.message,
+            stack: e.stack
+        }
+        data = error
+        status = 'error'
     }
+    const response = {
+        status: status,
+        data: data
+    }
+    return response
 }

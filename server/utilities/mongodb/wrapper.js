@@ -1,21 +1,20 @@
 /**
- *   Employee Model
+ *   MongoDb function wrappers
  */
-import { connectToMongoDb } from '../utilities/mongodb/database.js'
-
+import { connectToMongoDb } from '../mongodb/database.js'
 /**
  * @name insert
  * @description A batch insert function wrapping MongoDb's insertMany() function
- * @param { object } employees An object with a <requests> parameter containing an array of employee objects
+ * @param { object } objects An object with a <requests> parameter containing an array of objects to insert
  * @returns  { object } A canonical response object with an array of inserted ids in the Response <body>
  */
-export async function insert( employees ) { 
+export async function insert( request ) { 
     let data
     let status = 'processing'
     let recordCount = 0
     try {
-        let connection = await connectToDatabase()
-        const results = await connection.insertMany( employees.requests ) 
+        const connection = await connectToDatabase( request.collection )
+        const results = await connection.insertMany( request.requests ) 
         data = Object.values( results.insertedIds )
         recordCount = results.insertedCount
         status = 'success'
@@ -43,12 +42,12 @@ export async function insert( employees ) {
  * @param { object } employee 
  * @returns 
  */
-export async function update( filter, employee ) {
+export async function update( request ) {
     let body = {}
     let status = 'processing'
     try {
-        const connection = await connectToDatabase()
-        const results = await connection.replaceOne( filter, employee )
+        const connection = await connectToDatabase( request.collection )
+        const results = await connection.replaceOne( request.filter, request.object )
         body = results
         status = 'success'
     } catch ( e ) {
@@ -73,16 +72,16 @@ export async function update( filter, employee ) {
  * @param { object } criteria An object containing an array of key-value pairs describing the filters
  * @returns { object } A canonical response object 
  */
-export async function find( criteria ) {
-    let data
-    let status = 'processing'
-    let options = {
-        limit: 18
-    }
+export async function find( request ) {
+    var data
+    var status = 'processing'
+    var recordCount = 0
     try {
-        let connection = await connectToDatabase()
-        const results = connection.find( criteria, options )
+        console.log(request)
+        const connection = await connectToDatabase( request.collection )
+        const results = connection.find( request.criteria, request.options )
         data = await results.toArray() // MongoDb returns a Cursor object so we need to use toArray() here
+        recordCount = data.length
         status = 'success'
     } catch ( e ) {
         const error = {
@@ -93,21 +92,21 @@ export async function find( criteria ) {
         data = error
         status = 'error'
     }
-    let response = {
+    var response = {
             status: status,
+            recordCount: recordCount,
             data: data
         }
     return response
 }
 
-async function connectToDatabase() {
-    let collection
+async function connectToDatabase( collection ) {
     let database
     let client
     try {
         client = await connectToMongoDb()
         database = client.db('bluebird')
-        collection = database.collection('employees')
+        collection = database.collection( collection )
     } catch ( e ) {
         const error = {
             name: e.name,
