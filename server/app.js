@@ -27,6 +27,6 @@ app.use( '/reports', reportsRouter )
 app.use( '/imports', importsRouter )
 app.use( '/authorization', authorizationRouter )
 
-app.listen(3000, () => {
+app.listen(PORT, () => {
     console.log( 'Listening on port ' + PORT )
 })
