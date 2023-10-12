@@ -127,16 +127,18 @@ export async function getEmployeeDetails( directory ) {
  * @returns { object } A canonical response object with an array of inserted ids in the Response <body>
  */
 export async function addEmployees( request ) {
+    console.log(request.requests)
     let data
     let status = 'processing'
     let recordCount = 0
     try {
         // validate the employee records passed via the employees parameter
-        let validation = await validateEmployees( request.requests )
+        let validation = await validateEmployees( request )
+        console.log(validation)
         if ( validation.status === 'error' ) {
             const error = {
                 name: 'Employee validation error',
-                message: 'Employee validation failed.',
+                message: validation.message,
                 stack: validation.body
             }
             data = error
@@ -160,7 +162,6 @@ export async function addEmployees( request ) {
             const results = await insert( params )
             if ( results.status === 'error' ) {
                 status = 'error'
-                httpResponseCode = 400
             } else {
                 status = 'success'
             }
@@ -289,52 +290,52 @@ export async function findEmployees( request ) {
  * @param { array } employees An array of employee objects
  * @returns 
  */
-async function validateEmployees( employees ) {
+async function validateEmployees( request ) {
     let data
     let error
     let errors = []
     let status = 'processing'
     try {
-        if ( ! Array.isArray( employees )) {
+        if ( ! Array.isArray( request.requests )) {
             return error = {
                 name: 'Employee validation error',
                 message: 'The function must be passed an array of employee objects.'
             }
         }
-        if ( employees.length < 1 ) {
+        if ( request.requests.length < 1 ) {
             return error = {
                 name: 'Employee validation error',
                 message: 'The input array must have at least one element.'
             }
         }
-        employees.forEach( ( employee ) => {
-            if ( ! employee.hasOwnProperty( 'finchId' )) {
+        request.requests.forEach( ( request ) => {
+            if ( ! request.hasOwnProperty( 'finchId' )) {
                 errors.push('The request must provide a Finch Id property')
             }
-            if ( ! employee.hasOwnProperty( 'firstName' ) ) {
+            if ( ! request.hasOwnProperty( 'firstName' ) ) {
                 errors.push('The request must provide a first name property.')
             } else {
-                if ( employee.firstName.length < 2 ) {
+                if ( request.firstName.length < 2 ) {
                     errors.push('The First Name property must have at least 2 characters')
                 }
-                if ( employee.firstName.length > 35 ) {
+                if ( request.firstName.length > 35 ) {
                     errors.push('The First Name property must have fewer than 35 characters')
                 }
             }
-            if ( ! employee.hasOwnProperty( 'lastName' )) {
+            if ( ! request.hasOwnProperty( 'lastName' )) {
                 errors.push( 'The request must contain a Last Name property' )
             } else {
-                if ( employee.lastName.length < 2 ) {
+                if ( request.lastName.length < 2 ) {
                     errors.push( 'The Last Name must have 2 or more characters ')
                 }
-                if ( employee.lastName.length > 35 ) {
+                if ( request.lastName.length > 35 ) {
                     errors.push( 'The Last Name must have fewer than 35 characters.' )
                 }
             }
-            if ( ! employee.hasOwnProperty( 'employerId') ) {
+            if ( ! request.hasOwnProperty( 'employerId') ) {
                 errors.push( 'The request must contain an EmployerId property' )
             }
-            if ( ! employee.hasOwnProperty( 'email') ) {
+            if ( ! request.hasOwnProperty( 'email') ) {
                 errors.push( 'The request must contain an Email property' )
             }
 
@@ -342,7 +343,7 @@ async function validateEmployees( employees ) {
                 error =  {
                     name: 'Employee validation error',
                     errors: errors,
-                    offender: employee
+                    offender: request
                 }
                 return response = {
                     status: 'error',

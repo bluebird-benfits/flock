@@ -1,7 +1,6 @@
 // Module: Employees Router
 import express from 'express'
 import { addEmployees, editEmployees, findEmployees} from '../controllers/employeesController.js'
-import { responseObject } from '../utilities/http/response.js'
 
 const router = express.Router()
 
@@ -39,12 +38,15 @@ router.get(`/`, async (req, res) => {
 })
 
 router.post(`/`, async (req, res) => {
-    let data
-    let status = 'processing'
-    let httpResponseCode
-    let recordCount = 0
+    var data
+    var status = 'processing'
+    var httpResponseCode
+    var recordCount = 0
     try {
-        let results = await addEmployees( req.body )
+        const request = {
+            requests: req.body
+        }
+        let results = await addEmployees( request )
         if ( results.status === 'error' ) {
             status = 'error'
             httpResponseCode = 400

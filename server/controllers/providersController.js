@@ -3,8 +3,6 @@
  * 
  */
 
-import { insert, update, get } from '../models/providerModel.js'
-
 export async function addProviders(providers) {
 
 }

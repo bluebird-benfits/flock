@@ -1,22 +1,48 @@
 // Module: Employers
 import express from 'express'
 import { logEvent } from '../controllers/loggerController.js'
-import { addEmployers } from '../controllers/employersController.js'
+import { addEmployers, findEmployers } from '../controllers/employersController.js'
 
 const router = express.Router()
 
-router.get(`/`, (req, res) => {
-    if ( req.body != undefined ) {
-        return res.status(400).send( {
-            status: 'error',
-            message: 'This endpoint does not allow a body in the request'
-        })
+router.get(`/`, async (req, res) => {
+    var data
+    var status = 'processing'
+    var recordCount = 0
+    var httpResponseCode
+    try {
+        let request = {
+            criteria: req.query
+        }
+        const results = await findEmployers( request )
+        data = results.data
+        recordCount = results.recordCount
+        status = 'success'
+        httpResponseCode = 200
+    } catch ( e ) {
+        const error = {
+            name: e.name,
+            message: e.message,
+            stack: e.stack
+        }
+        data = error
+        status = 'error'
+        httpResponseCode = 400
     }
-
-    res.send(`hello employers`)
+    const response = {
+        status: status,
+        recordCount: recordCount,
+        data: data
+    }
+    
+    return res.status( httpResponseCode ).send( response )
 })
 
 router.post(`/`, async (req, res) => {
+    var data
+    var status = 'processing'
+    var httpResponseCode
+    var recordCount = 0
     if ( req.body === undefined ) {
         return res.status(400).send( {
             status: 'error',
@@ -41,9 +67,35 @@ router.post(`/`, async (req, res) => {
             message: 'The requests array cannot be empty'
         })
     }
-    let employers = req.body.requests
-    let response = await addEmployers( employers )
-    return res.status(response.statusCode).send( response )
+    try {
+        const request = {
+            requests: req.body.requests
+        }
+        const results = await addEmployers( request )
+        if ( results.status === 'error' ) {
+            data = results.data
+            status = 'error'
+        } else {
+            data = results.data
+            recordCount = results.recordCount
+            status = 'success'
+        }
+    } catch ( e ) {
+        const error = {
+            name: e.name,
+            message: e.message,
+            stack: e.stack
+        }
+        data = error
+        status = 'error'
+    }
+    var response = {
+        status: status,
+        recordCount: recordCount,
+        data: data
+    }
+
+    return res.status(200).send( response )
 })
 
 router.put(`/:id`, (req, res) => {

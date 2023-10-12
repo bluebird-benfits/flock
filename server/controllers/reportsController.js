@@ -3,8 +3,6 @@
  * 
  */
 
-import { insert, update, get } from '../models/reportModel.js'
-
 export async function addReports(reports) {
 
 }

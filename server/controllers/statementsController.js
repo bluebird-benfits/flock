@@ -3,7 +3,6 @@
  * 
  */
 import { sendHttpRequest } from "../utilities/http/http.js";
-import { insert } from '../models/statementsModel.js'
 
 export async function payStatementBulkImport() {
     console.log('Begin - buildPaystatments')

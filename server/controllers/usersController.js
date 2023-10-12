@@ -2,7 +2,6 @@
  * Users Controller
  * 
  */
-import { insert, update, find } from '../models/userModel.js'
 
 let body = {}
 let status = process.env.API_STATUS_PROCESSING

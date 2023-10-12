@@ -4,7 +4,6 @@
  */
 import { buildEmployeeProfiles, addEmployees } from '../controllers/employeesController.js'
 import { payStatementBulkImport } from '../controllers/statementsController.js'
-import { insert } from '../models/userModel.js'
 
 /**
  * Function: executeInitialImportProcess()
