@@ -6,95 +6,109 @@ import { addUsers, editUsers, findUsers } from '../controllers/usersController.j
 
 const router = express.Router()
 
-let body = {}
-let status = ''
-let statusCode = 0
-let processStart = ''
-let processEnd = ''
-let processDuration = 0
-let functionInvoked = ''
-let criteria = {}
-let results
-
 router.get(`/`, async (req, res) => {
-
-    processStart = Date.now()
-    status = process.env.API_STATUS_PROCESSING
-
-    if ( req.query != undefined ) {
-        criteria = req.query
-    }
-
+    var data
+    var status = 'processing'
+    var recordCount = 0
+    var httpResponseCode
     try {
-        results = await findUsers( criteria )
-        body = results.toArray()
-        status = process.env.API_STATUS_SUCCESS
-        statusCode = 200
+        const request = {
+            criteria: req.query
+        }
+        const results = await findUsers( request )
+        data = results.data
+        recordCount = results.recordCount
+        status = 'success'
+        httpResponseCode = 200
     } catch ( e ) {
         let error = {
             name: e.name,
             message: e.message,
             stack: e.stack
         }
-        body = { error: error }
-        statusCode = 400
+        data = error
+        status = 'error'
+        httpResponseCode = 400
     }
-    functionInvoked = 'usersRouter.get()'
-    processEnd = Date.now()
-    processDuration = ( processEnd - processStart ) / 1000
-
-    let response = {
-        functionInvoked: functionInvoked,
+    var response = {
         status: status,
-        processStart: processStart,
-        processEnd: processEnd,
-        processDuration: processDuration,
-        body: body
+        recordCount: recordCount,
+        data: data
     }
-    res.status( statusCode ).send( response )
+    res.status( httpResponseCode ).send( response )
 })
 
 router.post(`/`, async (req, res) => {
-    
-    processStart = Date.now()
+    var data
+    var status = 'processing'
+    var recordCount = 0
+    var httpResponseCode
     try {
-        let results = await addUsers( req.body.requests )
-        body = results
-        status = process.env.API_STATUS_SUCCESS
-        statusCode = 200
+        const request = {
+            requests: req.body.requests
+        }
+        const results = await addUsers( request )
+        if ( results.status === 'error' ) {
+            status = 'error'
+            httpResponseCode = 400
+        } else {
+            status = 'success'
+            data = results.data
+            recordCount = results.recordCount
+            httpResponseCode = 200
+        }
     } catch ( e ) {
-        error = {
+        const error = {
             name: e.name,
             message: e.message,
             stack: e.stack
         }
-        body = error
-        status = process.env.API_STATUS_ERROR
-        statusCode = 400
+        data = error
+        status = 'error'
+        httpResponseCode = 400
     }
-    functionInvoked = 'usersRouter.post()'
-    processEnd = Date.now()
-    processDuration = ( processEnd - processStart ) / 1000
-
-    let response = {
-        functionInvoked: functionInvoked,
+    var response = {
         status: status,
-        processStart: processStart,
-        processEnd: processEnd,
-        processDuration: processDuration,
-        body: body
+        recordCount: recordCount,
+        data: data
     }
-    res.status( statusCode ).send( response )
-
+    res.status( httpResponseCode ).send( response )
 })
 
 router.put('/', async (req, res) => {
-    let body = req.body
-    // 
-    if (body != undefined) {
-        let response = await editUsers(parameters)
-        res.send(response)
+    var data
+    var status = 'processing'
+    var recordCount = 0
+    var httpResponseCode
+    try {
+        const request = {
+            requests: req.body
+        }
+        const results = await editUsers( request )
+        if ( results.status === 'error' ) {
+            status = 'error'
+            httpResponseCode = 400
+        } else {
+            data = results.data
+            status = 'success'
+            httpResponseCode = 200
+        }
+    } catch ( e ) {
+        const error = {
+            name: e.name,
+            message: e.message,
+            stack: e.stack
+        }
+        data = error
+        status = 'error'
+        httpResponseCode = 400
     }
+    const response = {
+        status: status,
+        recordCount: recordCount,
+        data: data
+    }
+    res.status( httpResponseCode ).send( response )
 })
 
 export default router

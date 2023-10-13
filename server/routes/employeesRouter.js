@@ -10,7 +10,7 @@ router.get(`/`, async (req, res) => {
     var recordCount = 0
     var httpResponseCode
     try {
-        let request = {
+        const request = {
             criteria: req.query
         }
         const results = await findEmployees( request )
@@ -33,29 +33,28 @@ router.get(`/`, async (req, res) => {
         recordCount: recordCount,
         data: data
     }
-    
     return res.status( httpResponseCode ).send( response )
 })
 
 router.post(`/`, async (req, res) => {
     var data
     var status = 'processing'
-    var httpResponseCode
     var recordCount = 0
+    var httpResponseCode
     try {
         const request = {
-            requests: req.body
+            requests: req.body.requests
         }
-        let results = await addEmployees( request )
+        const results = await addEmployees( request )
         if ( results.status === 'error' ) {
             status = 'error'
             httpResponseCode = 400
         } else {
             status = 'success'
-            httpResponseCode = 200
+            data = results.data
             recordCount = results.recordCount
+            httpResponseCode = 200
         }
-        data = results.data
     } catch ( e ) {
         const error = {
             name: e.name,
@@ -75,20 +74,23 @@ router.post(`/`, async (req, res) => {
 })
 
 router.put(`/`, async (req, res) => {
-    let data
-    let status = 'processing'
-    let httpResponseCode
-    let recordCount = 0
+    var data
+    var status = 'processing'
+    var httpResponseCode
+    var recordCount = 0
     try {
-        let results = await editEmployees( req.body )
+        const request = {
+            requests: req.body
+        }
+        let results = await editEmployees( request )
         if ( results.status === 'error' ) {
             status = 'error'
             httpResponseCode = 400
         } else {
+            data = results.data
             status = 'success'
             httpResponseCode = 200
         }
-        data = results.data
     } catch ( e ) {
         const error = {
             name: e.name,

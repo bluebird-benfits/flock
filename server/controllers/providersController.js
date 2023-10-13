@@ -11,7 +11,7 @@ export async function editProviders(providers) {
 
 }
 
-export async function getProviders(criteria) {
+export async function findProviders(criteria) {
 
 }
 

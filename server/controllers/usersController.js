@@ -2,132 +2,160 @@
  * Users Controller
  * 
  */
-
-let body = {}
-let status = process.env.API_STATUS_PROCESSING
-let statusCode = 0
-let processStart = Date.now()
-let processEnd = ''
-let processDuration = 0
-let functionInvoked = ''
-let criteria = {}
-let results
+import { insert, update, find } from '../utilities/mongodb/wrapper.js'
 
 /**
  * 
  * @param { object } users 
  */
-export async function addUsers( users ) {
-
-    processStart = Date.now()
+export async function addUsers( request ) {
+    var data
+    var status = 'processing'
+    var recordCount = 0
     try {
-        let validation = validateUsers( users )
+        let validation = await validateUsers( request.requests )
         if ( validation.status === 'error' ) {
-            error = {
+            const error = {
                 name: 'User validation error',
-                message: 'User validation failed.  See body for details.',
+                message: validation.message,
                 stack: validation.body
             }
-            body = error
-            status = process.env.API_STATUS_ERROR
-            statusCode = 400
+            data = error
+            status = 'error'
         }
     }  catch ( e ) {
-        error = {
+        const error = {
             name: e.name,
             message: e.message,
             stack: e.stack
         }
-        body = error
-        status = process.env.API_STATUS_ERROR
-        statusCode = 400
+        data = error
+        status = 'error'
     }
 
-    if ( status != process.env.API_STATUS_ERROR ) {  // don't run the next block if validation failed
+    if ( status != 'error' ) {  // don't run the next block if validation failed
         try {
-            results = await insert( users )
-            body = results
-            status = process.env.API_STATUS_SUCCESS
-            statusCode = 200
+            const params = {
+                collection: 'users',
+                requests: request.requests
+            }
+            const results = await insert( params )
+            data = results
+            status = 'success'
         } catch ( e ) {
-            error = {
+            const error = {
                 name: e.name,
                 message: e.message,
                 stack: e.stack
             }
-            body = error
-            status = process.env.API_STATUS_ERROR
-            statusCode = 400
+            data = error
+            status = 'error'
         }
     }
-    functionInvoked = 'usersController.addUsers()'
-    processEnd = Date.now()
-    processDuration = ( processEnd - processStart ) / 1000
-
-    let response = {
-        functionInvoked: functionInvoked,
+    var response = {
         status: status,
-        statusCode: statusCode,
-        processStart: processStart,
-        processEnd: processEnd,
-        processDuration: processDuration,
-        body: body
+        recordCount: recordCount,
+        data: data,
     }
     return response
 }
     
-export async function editUsers( users ) {
-
+export async function editUsers( request ) {
+    var data
+    var status = 'processing'
+    var recordCount = 0
+    var updated = []
+    var fallout = []
+    try {
+        const validation = await validateUsers( request.requests )
+        if ( validation.status === 'error' ) {
+            const error = {
+                name: 'User validation error',
+                message: validation.message,
+                stack: validation.data
+            }
+            data = error
+            status = 'error'
+        } else {
+            request.requests.forEach( async ( object ) => {
+                const filter = { _id: object.id }
+                const params = {
+                    collection: 'users',
+                    object: object,
+                    filter: filter
+                }
+                const result = await update( params )
+                if ( result.body.matchedCount === 0 ) {
+                    fallout.push( object._id )
+                } else {
+                    update.push( object._id )
+                    recordCount += 1
+                }
+            })
+            data = updated
+            status = 'success'
+        }
+    } catch ( e ) {
+        const error = {
+            name: e.name,
+            message: e.message,
+            stack: e.stack
+        }
+        data = error
+        status = 'error'
+    }
+    const response = {
+        status: status,
+        recordCount: recordCount,
+        data: data
+    }
+    return response
 }
 /**
  * 
  * @param { object } criteria 
  * @returns { object }
  */
-export async function findUsers( criteria ) {
-
-    processStart = Date.now()
-    status = process.env.API_STATUS_SUCCESS
-
+export async function findUsers( request ) {
+    var data
+    var status = 'processing'
+    var recordCount = 0
     try {
-        results = await find( criteria )
-        body = results.toArray()
+        const params = {
+            collection: 'users',
+            criteria: request.criteria,
+            options: {}
+        }
+        const results = await find( params )
+        if ( results.status === 'error' ) {
+            status = 'error'
+            data = results.data
+        }
+        status = 'success'
+        data = results.data
+        recordCount = data.length
     } catch ( e ) {
         let error = {
             name: e.name,
             message: e.message,
             stack: e.stack
         }
-        body = error
-        status = process.env.API_STATUS_ERROR
+        data = error
+        status = 'error'
     }
-    functionInvoked = 'userController.findUsers()'
-    processEnd = Date.now()
-    processDuration = ( processEnd - processStart ) / 1000
-
-    let response = {
-        functionInvoked: functionInvoked,
+    var response = {
         status: status,
-        statusCode: statusCode,
-        processStart: processStart,
-        processEnd: processEnd,
-        processDuration: processDuration,
-        body: results
+        recordCount: recordCount,
+        data: data
     }
-
     return response 
 }
 
-export async function deleteUsers( users ) {
-
-}
 
 async function validateUsers( users ) {
-
+    var data
+    var status = 'processing'
     try {
-        let response = {
-            status: ''
-        }
         // Confirm the input parameter is an array with at least one element
         if ( ! Array.isArray( users )) {
             return {
@@ -178,16 +206,19 @@ async function validateUsers( users ) {
                 }
             }
             if ( errors.length > 0 ) {  // return after the first user that fails validation
-                response =  {
+                const error =  {
                     status: 'error',
                     errors: errors,
                     offender: user
                 }
+                status = 'error'
+                data = error
             } 
         })
-        response = {
-            status: 'success',
-            body: users
+        status = 'success'
+        var response = {
+            status: status,
+            data: data
         }
         return response
     } catch ( error ) {

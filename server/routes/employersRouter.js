@@ -1,7 +1,8 @@
-// Module: Employers
+/**
+ *   Employers Router
+ */
 import express from 'express'
-import { logEvent } from '../controllers/loggerController.js'
-import { addEmployers, findEmployers } from '../controllers/employersController.js'
+import { addEmployers, editEmployers, findEmployers } from '../controllers/employersController.js'
 
 const router = express.Router()
 
@@ -11,7 +12,7 @@ router.get(`/`, async (req, res) => {
     var recordCount = 0
     var httpResponseCode
     try {
-        let request = {
+        const request = {
             criteria: req.query
         }
         const results = await findEmployers( request )
@@ -19,6 +20,79 @@ router.get(`/`, async (req, res) => {
         recordCount = results.recordCount
         status = 'success'
         httpResponseCode = 200
+    } catch ( e ) {
+        let error = {
+            name: e.name,
+            message: e.message,
+            stack: e.stack
+        }
+        data = error
+        status = 'error'
+        httpResponseCode = 400
+    }
+    var response = {
+        status: status,
+        recordCount: recordCount,
+        data: data
+    }
+    res.status( httpResponseCode ).send( response )
+})
+
+router.post(`/`, async (req, res) => {
+    var data
+    var status = 'processing'
+    var recordCount = 0
+    var httpResponseCode
+    try {
+        const request = {
+            requests: req.body.requests
+        }
+        const results = await addEmployers( request )
+        if ( results.status === 'error' ) {
+            status = 'error'
+            httpResponseCode = 400
+        } else {
+            status = 'success'
+            data = results.data
+            recordCount = results.recordCount
+            httpResponseCode = 200
+        }
+    } catch ( e ) {
+        const error = {
+            name: e.name,
+            message: e.message,
+            stack: e.stack
+        }
+        data = error
+        status = 'error'
+        httpResponseCode = 400
+    }
+    var response = {
+        status: status,
+        recordCount: recordCount,
+        data: data
+    }
+    res.status( httpResponseCode ).send( response )
+})
+
+router.put('/', async (req, res) => {
+    var data
+    var status = 'processing'
+    var recordCount = 0
+    var httpResponseCode
+    try {
+        const request = {
+            requests: req.body
+        }
+        const results = await editEmployers( request )
+        if ( results.status === 'error' ) {
+            status = 'error'
+            httpResponseCode = 400
+        } else {
+            data = results.data
+            status = 'success'
+            httpResponseCode = 200
+        }
     } catch ( e ) {
         const error = {
             name: e.name,
@@ -34,72 +108,7 @@ router.get(`/`, async (req, res) => {
         recordCount: recordCount,
         data: data
     }
-    
-    return res.status( httpResponseCode ).send( response )
-})
-
-router.post(`/`, async (req, res) => {
-    var data
-    var status = 'processing'
-    var httpResponseCode
-    var recordCount = 0
-    if ( req.body === undefined ) {
-        return res.status(400).send( {
-            status: 'error',
-            message: 'This endpoint requires a JSON-encoded request body.'
-        } )
-    }
-    if ( ! req.body.hasOwnProperty( 'requests' ) ) {
-        return res.status(400).send( {
-            status: 'error',
-            message: 'The body must include a requests property.'
-        } )
-    }
-    if ( ! Array.isArray( req.body.requests )) {
-        return res.status(400).send( {
-            status: 'error',
-            message: 'The requests property must be an array.'
-        } )
-    }
-    if ( req.body.requests.length === 0 ) {
-        return res.status(400).send( {
-            status: 'error',
-            message: 'The requests array cannot be empty'
-        })
-    }
-    try {
-        const request = {
-            requests: req.body.requests
-        }
-        const results = await addEmployers( request )
-        if ( results.status === 'error' ) {
-            data = results.data
-            status = 'error'
-        } else {
-            data = results.data
-            recordCount = results.recordCount
-            status = 'success'
-        }
-    } catch ( e ) {
-        const error = {
-            name: e.name,
-            message: e.message,
-            stack: e.stack
-        }
-        data = error
-        status = 'error'
-    }
-    var response = {
-        status: status,
-        recordCount: recordCount,
-        data: data
-    }
-
-    return res.status(200).send( response )
-})
-
-router.put(`/:id`, (req, res) => {
-
+    res.status( httpResponseCode ).send( response )
 })
 
 export default router

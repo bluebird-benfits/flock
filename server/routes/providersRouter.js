@@ -1,22 +1,114 @@
-// Module: providers
+/**
+ *   Providers Router
+ */
 import express from 'express'
+import { addProviders, editProviders, findProviders } from '../controllers/providersController.js'
 
 const router = express.Router()
 
-router.get(`/`, (req, res) => {
-    res.send(`getting a list of providers`)
+router.get(`/`, async (req, res) => {
+    var data
+    var status = 'processing'
+    var recordCount = 0
+    var httpResponseCode
+    try {
+        const request = {
+            criteria: req.query
+        }
+        const results = await findProviders( request )
+        data = results.data
+        recordCount = results.recordCount
+        status = 'success'
+        httpResponseCode = 200
+    } catch ( e ) {
+        let error = {
+            name: e.name,
+            message: e.message,
+            stack: e.stack
+        }
+        data = error
+        status = 'error'
+        httpResponseCode = 400
+    }
+    var response = {
+        status: status,
+        recordCount: recordCount,
+        data: data
+    }
+    res.status( httpResponseCode ).send( response )
 })
-router.get(`/:id`, (req, res) => {
-    res.send(`getting a provider with the id ` + req.params.id)
+
+router.post(`/`, async (req, res) => {
+    var data
+    var status = 'processing'
+    var recordCount = 0
+    var httpResponseCode
+    try {
+        const request = {
+            requests: req.body.requests
+        }
+        const results = await addProviders( request )
+        if ( results.status === 'error' ) {
+            status = 'error'
+            httpResponseCode = 400
+        } else {
+            status = 'success'
+            data = results.data
+            recordCount = results.recordCount
+            httpResponseCode = 200
+        }
+    } catch ( e ) {
+        const error = {
+            name: e.name,
+            message: e.message,
+            stack: e.stack
+        }
+        data = error
+        status = 'error'
+        httpResponseCode = 400
+    }
+    var response = {
+        status: status,
+        recordCount: recordCount,
+        data: data
+    }
+    res.status( httpResponseCode ).send( response )
 })
-router.get(`/:id/connections`, (req, res) => {
-    res.send(`getting a list of connections active for provider with id ` + req.params.id)
-})
-router.get(`/:id/deductions`, (req, res) => {
-    res.send(`getting a list of deductions configured for this provider`)
-})
-router.post(`/`, (req, res) => {
-    res.send(`creating a new provider`)
+
+router.put('/', async (req, res) => {
+    var data
+    var status = 'processing'
+    var recordCount = 0
+    var httpResponseCode
+    try {
+        const request = {
+            requests: req.body
+        }
+        const results = await editProviders( request )
+        if ( results.status === 'error' ) {
+            status = 'error'
+            httpResponseCode = 400
+        } else {
+            data = results.data
+            status = 'success'
+            httpResponseCode = 200
+        }
+    } catch ( e ) {
+        const error = {
+            name: e.name,
+            message: e.message,
+            stack: e.stack
+        }
+        data = error
+        status = 'error'
+        httpResponseCode = 400
+    }
+    const response = {
+        status: status,
+        recordCount: recordCount,
+        data: data
+    }
+    res.status( httpResponseCode ).send( response )
 })
 
 export default router

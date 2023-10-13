@@ -127,7 +127,6 @@ export async function getEmployeeDetails( directory ) {
  * @returns { object } A canonical response object with an array of inserted ids in the Response <body>
  */
 export async function addEmployees( request ) {
-    console.log(request.requests)
     let data
     let status = 'processing'
     let recordCount = 0
@@ -177,7 +176,7 @@ export async function addEmployees( request ) {
             status = 'error'
         }
     }
-    const response = {
+    var response = {
         status: status,
         recordCount: recordCount,
         data: data
@@ -202,14 +201,14 @@ export async function editEmployees( request ) {
         if ( validation.status === 'error' ) {
             const error = {
                 name: 'Employee validation error',
-                message: 'Employee validation failed.',
+                message: validation.message,
                 stack: validation.data
             }
             data = error
             status = 'error'
         } else {
             request.requests.forEach( async ( object ) => {
-                let filter = { _id : object._id }
+                const filter = { _id: object._id }
                 let params = {
                     collection: 'employees',
                     object: object,
