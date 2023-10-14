@@ -1,6 +1,8 @@
-// Module: Employees Router
+/**
+ * @description Express router for handling authorization requests
+ */
 import express from 'express'
-import { addEmployees, editEmployees, findEmployees} from '../controllers/employeesController.js'
+import { createToken, retrieveToken, authorize} from '../controllers/authorizationController.js'
 
 const router = express.Router()
 
@@ -15,7 +17,7 @@ router.get(`/`, async (req, res) => {
         const request = {
             criteria: req.query
         }
-        const results = await findEmployees( request )
+        const results = await retrieveToken( request )
         data = results.data
             recordCount = results.recordCount
             status = 'success'
@@ -43,7 +45,7 @@ router.post(`/`, async (req, res) => {
         const request = {
             requests: req.body.requests
         }
-        const results = await addEmployees( request )
+        const results = await createToken( request )
         if ( results.status === 'error' ) {
             status = 'error'
             httpResponseCode = 400
@@ -71,17 +73,18 @@ router.post(`/`, async (req, res) => {
     res.status( httpResponseCode ).send( response )
 })
 
-router.put(`/`, async (req, res) => {
+router.post(`/authorize`, async (req, res) => {
     try {
         const request = {
             requests: req.body
         }
-        let results = await editEmployees( request )
+        let results = await authorize( request )
         if ( results.status === 'error' ) {
             status = 'error'
             httpResponseCode = 400
         } else {
             data = results.data
+            recordCount = results.recordCount
             status = 'success'
             httpResponseCode = 200
         }
@@ -100,7 +103,7 @@ router.put(`/`, async (req, res) => {
         recordCount: recordCount,
         data: data
     }
-    res.status( httpResponseCode ).send ( response )
+    res.status( httpResponseCode ).send( response )
 })
 
 export default router

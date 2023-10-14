@@ -5,10 +5,13 @@
 // import { insert, update, find } from '../models/employeeModel.js'
 import { sendHttpRequest } from '../utilities/http/http.js'
 import { insert, update, find } from '../utilities/mongodb/wrapper.js'
+import { EventEmitter } from 'events'
 /**
  * 
  * @description This is the main function orchestrating the data import of employee profiles
  */
+var emitter = new EventEmitter()
+
 export async function buildEmployeeProfiles() {
     try {
         let profilesList = []
@@ -248,6 +251,7 @@ export async function editEmployees( request ) {
  * @returns 
  */
 export async function findEmployees( request ) {
+    emitter.emit( 'event', request)
     var data
     var status = 'processing'
     var recordCount = 0
@@ -359,7 +363,7 @@ async function validateEmployees( request ) {
         data = error
         status = 'error'
     }
-    const response = {
+    response = {
         status: status,
         data: data
     }

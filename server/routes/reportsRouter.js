@@ -6,20 +6,22 @@ import { addReports, editReports, findReports } from '../controllers/reportsCont
 
 const router = express.Router()
 
+var response                // object containing the function response
+var data                    // response property holding the employer data returned, if applicable
+var status = 'processing'   // response property holding the process status  
+var recordCount = 0         // response property holding the number or records affected 
+var httpResponseCode        // property holding the Http status code
+
 router.get(`/`, async (req, res) => {
-    var data
-    var status = 'processing'
-    var recordCount = 0
-    var httpResponseCode
     try {
         const request = {
             criteria: req.query
         }
         const results = await findReports( request )
-        data = results.data
-        recordCount = results.recordCount
-        status = 'success'
-        httpResponseCode = 200
+            data = results.data
+            recordCount = results.recordCount
+            status = 'success'
+            httpResponseCode = 200
     } catch ( e ) {
         let error = {
             name: e.name,
@@ -30,7 +32,7 @@ router.get(`/`, async (req, res) => {
         status = 'error'
         httpResponseCode = 400
     }
-    var response = {
+    response = {
         status: status,
         recordCount: recordCount,
         data: data
@@ -39,10 +41,6 @@ router.get(`/`, async (req, res) => {
 })
 
 router.post(`/`, async (req, res) => {
-    var data
-    var status = 'processing'
-    var recordCount = 0
-    var httpResponseCode
     try {
         const request = {
             requests: req.body.requests
@@ -67,7 +65,7 @@ router.post(`/`, async (req, res) => {
         status = 'error'
         httpResponseCode = 400
     }
-    var response = {
+    response = {
         status: status,
         recordCount: recordCount,
         data: data
@@ -76,10 +74,6 @@ router.post(`/`, async (req, res) => {
 })
 
 router.put('/', async (req, res) => {
-    var data
-    var status = 'processing'
-    var recordCount = 0
-    var httpResponseCode
     try {
         const request = {
             requests: req.body
@@ -103,7 +97,7 @@ router.put('/', async (req, res) => {
         status = 'error'
         httpResponseCode = 400
     }
-    const response = {
+    response = {
         status: status,
         recordCount: recordCount,
         data: data

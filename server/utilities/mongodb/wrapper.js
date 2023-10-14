@@ -77,9 +77,8 @@ export async function find( request ) {
     var status = 'processing'
     var recordCount = 0
     try {
-        console.log(request)
         const connection = await connectToDatabase( request.collection )
-        const results = connection.find( request.criteria, request.options )
+        const results = await connection.find( request.criteria, request.options )
         data = await results.toArray() // MongoDb returns a Cursor object so we need to use toArray() here
         recordCount = data.length
         status = 'success'

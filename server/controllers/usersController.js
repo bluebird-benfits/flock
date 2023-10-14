@@ -3,6 +3,7 @@
  * 
  */
 import { insert, update, find } from '../utilities/mongodb/wrapper.js'
+import bcrypt from 'bcrypt'
 
 /**
  * 
@@ -32,7 +33,6 @@ export async function addUsers( request ) {
         data = error
         status = 'error'
     }
-
     if ( status != 'error' ) {  // don't run the next block if validation failed
         try {
             const params = {
